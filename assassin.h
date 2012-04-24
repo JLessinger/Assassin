@@ -1,6 +1,6 @@
 static void sighandler(int signo);
 int server_init();
-int check_key(int live, int dead, char* str);
+int check_key(int live, int dead, char* str, int mode);
 void next_target(int live, int dead, char* line);
 int readline(int live, char* line);
 int is_dead(int dead, char* str);

@@ -22,7 +22,7 @@ int main(){
    umask(0000);
    signal(SIGINT, sighandler);
    
-   //     fromClient = server_init();
+        fromClient = server_init();
      //   printf("after init\n");
     
   fflush(stdout);
@@ -46,8 +46,7 @@ int main(){
        lseek(dead, 0, SEEK_END);
      }
    
-     shuffle(live);
-     return 0;
+    
      if(!already_playing()){
        //add players
        printf("Waiting for players or start command...\n");
@@ -86,25 +85,138 @@ int main(){
      numplayers = count_lines(live);
      
   while(1){
-    memset(buffer, 0, 50);
-    if(read(fromClient, buffer, 50)){
+    memset(buffer, 0, 100);
+    if(read(fromClient, buffer, 100)){
       //  printf("Message: %d'%s'\n", strlen(buffer), buffer);
       
-      int check;
-      check = check_key(live, dead, buffer);
-      if(check==-1){
+      if(!strchr(str, '.')){
 	printf("Invalid string.\n");
       }
-      if(check==1){
+      else{//buffer contains two things separated by '.'
+
+	//name of user
+	char user[50];
+	
+	//buffer now holds only name of the input target
+	strcpy(user, strsep(&buffer, '.'));
+	
+	//will hold appropriate target
+	char tar[50];
+	memset(tar, 0, 50);
+
+	int check;
+	check = auth(live, dead, user, tar);
+	if(check==-1){
+	  printf("Invalid String.\n");
+	}
+	if(check==1){
+	  printf("No match.\n");
+	}
+	if(check==-2){
+	  printf("You're dead.\n");
+	}
+	if(check==0){//match was found, now check tar against input tar
+	  if(strcmp(tar, buffer)==0){//match
+	    record(dead, tar);
+	    next_target(live, dead, tar);
+	    check_win();
+	    printf("Kill successfully recorded. Your next target is %s.\n", line);
+	  }
+	}
+	fflush(stdout);
+	//	int check;
+	check = check_key(live, dead, buffer, KILL);
+	if(check==-1){
+	  printf("Invalid string.\n");
+	}
+	if(check==1){
 	printf("No match.\n");
+	}
+	if(check==-2){
+	  printf("Already dead.\n");
+	}
+	fflush(stdout);
       }
-      if(check==-2){
-	printf("Already dead.\n");
-      }
-      fflush(stdout);
+    }
+  }  	      
+}
+
+
+int auth(int live, int dead, char* str, char* tar){
+  lseek(live, 0, SEEK_SET);
+  if(!strchr(str, ' ')){
+    //    printf("no space\n");
+    return -1;
+  }
+  if(str[0]==' '){
+    // printf("No name.\n");
+    return -1;
+  }
+  
+  if(is_dead(dead, str)){
+    return -2;
+  }
+  while(readline(live, tar)){
+    if(strcmp(str, tar)==0){
+      next_target(live, dead, tar);
+      return 0;
     }
   }
-}  	      
+}
+
+  //returns 0 upon success, -1 (or any non-zero number) upon failure
+  //success = properly formatted string
+int check_key(int live, int dead, char* str, int mode){
+  lseek(live, 0, SEEK_SET);
+  lseek(dead, 0, SEEK_SET);
+  //  printf("checking\n");
+  if(!strchr(str, ' ')){
+    //    printf("no space\n");
+    return -1;
+    }
+  if(str[0]==' '){
+    // printf("No name.\n");
+    return -1;
+  }
+  
+  if(is_dead(dead, str)){
+    return -2;
+  }
+
+  char line[50];
+
+  if(mode==KILL){
+    //check every line in live.txt against the input name and pw.
+    //  if there is no match, return success.
+    //if there is a match, write the name/pw in dead.txt.
+    //then continue through live.txt and send back the next not dead name
+    // printf("about to check line by line\n");
+    while(readline(live, line)){
+      //   printf("line: %d'%s'", strlen(line), line);
+      //  printf("str: %d'%s'", strlen(str), str);
+      if(strcmp(str, line)==0){
+	//  printf("match\n");
+	record(dead, str);
+	//   printf("recorded\n");
+	next_target(live, dead, line);
+	
+	check_win(str);
+	printf("Kill successfully recorded. Your next target is %s.\n", line);
+	//    check_win(str);
+	return 0; 
+      }
+    }
+    return 1;
+  }//if KILL
+  if(mode==AUTH){
+    while(readline(live, line)){
+      if(strcmp(str, line)==0){
+	next_target(live, dead, line);
+      }
+    }
+    return 1;
+  }
+}
 
 int already_playing(){
   if(open("playing", O_CREAT | O_EXCL, 0664)==-1){
@@ -133,59 +245,15 @@ int server_init(){
   return fd;
 }
 
-  //returns 0 upon success, -1 (or any non-zero number) upon failure
-  //success = properly formatted string
-int check_key(int live, int dead, char* str){
-  lseek(live, 0, SEEK_SET);
-  lseek(dead, 0, SEEK_SET);
-  //  printf("checking\n");
-  if(!strchr(str, ' ')){
-    //    printf("no space\n");
-    return -1;
-    }
-  if(str[0]==' '){
-    // printf("No name.\n");
-    return -1;
-  }
-  
-  if(is_dead(dead, str)){
-    return -2;
-  }
-
-  char line[50];
-  //check every line in live.txt against the input name and pw.
-  //  if there is no match, return success.
-  //if there is a match, write the name/pw in dead.txt.
-  //then continue through live.txt and send back the next not dead name
-  // printf("about to check line by line\n");
-  while(readline(live, line)){
-    //   printf("line: %d'%s'", strlen(line), line);
-     //  printf("str: %d'%s'", strlen(str), str);
-    if(strcmp(str, line)==0){
-      //  printf("match\n");
-      record(dead, str);
-      //   printf("recorded\n");
-      next_target(live, dead, line);
-    
-      check_win(str);
-      printf("Kill successfully recorded. Your next target is %s.\n", line);
-      //    check_win(str);
-      return 0;
-    }
-  }
- 
-    return 1;
-}
-
-void check_win(char* name){
+void check_win(){
   int numdead;
   numdead = count_lines(dead);
   // printf("check win: %d %d\n", numplayers, numdead);
   if(numplayers-1==numdead){
     char name[50];
+ 
     //winner is the only target remaining
-      next_target(live, dead, name);
-  
+      next_target(live, dead, name); 
   
     printf("GAME OVER!!! WINNER: %s\n", name);
     remove("dead");
