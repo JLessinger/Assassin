@@ -35,11 +35,11 @@ int main(){
      memset(buffer, 0, 50);
      if(read(fromClient, buffer, 50)){
        if(strcmp(buffer, "start admin\n")==0){
-	 printf("Game starting!\n");
+	 printf("Game starting!\n\n");
 	 break;
        }
        if(strchr(buffer, ' ')){
-	 printf("adding '%s'\n", buffer);
+	 //	 printf("adding '%s'\n", buffer);
 	 write(live, buffer, strlen(buffer));
        }
        else{
