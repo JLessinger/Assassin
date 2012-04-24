@@ -9,12 +9,14 @@
 
 #define READ 0
 #define WRITE 1
+#define AUTH 2
+#define KILL 3
 
 int fromClient, live, dead, numplayers;
 
 int main(){
   
-  printf("Waiting for players or start command...");
+  printf("Waiting for players or start command...\n");
   fflush(stdout);
 
    umask(0000);
@@ -32,19 +34,20 @@ int main(){
    while(1){
      memset(buffer, 0, 50);
      if(read(fromClient, buffer, 50)){
+       if(strcmp(buffer, "start admin\n")==0){
+	 printf("Game starting!\n");
+	 break;
+       }
        if(strchr(buffer, ' ')){
+	 printf("adding '%s'\n", buffer);
 	 write(live, buffer, strlen(buffer));
        }
        else{
-	 if(strcmp(buffer, "start\n")==0){
-	   break;
-	 }
-	 else{
-	   printf("Invalid name/password pair.\n");
-	 }
+	 printf("Invalid name/password pair.\n");
        }
      }
    }
+
    
    //start play
    printf("Instructions:\nEnter first and last name of your victim in all lower case, with no space, and THEN a space, then the password you received from him/her.\nExample: johndoe password\n");
