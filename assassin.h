@@ -7,3 +7,4 @@ int is_dead(int dead, char* str);
 void record(int dead, char* str);
 void check_win(char* name);
 int count_lines(int file);
+int already_playing();

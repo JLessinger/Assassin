@@ -16,43 +16,75 @@ int fromClient, live, dead, numplayers;
 
 int main(){
   
-  printf("Waiting for players or start command...\n");
+  // printf("%d\n", already_playing());
   fflush(stdout);
 
    umask(0000);
    signal(SIGINT, sighandler);
    
-     fromClient = server_init();
-   
+   //     fromClient = server_init();
+     //   printf("after init\n");
+    
+  fflush(stdout);
+     
      char buffer[50];
-   memset(buffer, 0, 50);
-   
-   live = open("live.txt", O_RDWR, 0664);
-   dead = open("dead.txt", O_RDWR, 0664);
-   
-   //add players
-   while(1){
      memset(buffer, 0, 50);
-     if(read(fromClient, buffer, 50)){
-       if(strcmp(buffer, "start admin\n")==0){
-	 printf("Game starting!\n\n");
-	 break;
-       }
-       if(strchr(buffer, ' ')){
-	 //	 printf("adding '%s'\n", buffer);
-	 write(live, buffer, strlen(buffer));
-       }
-       else{
-	 printf("Invalid name/password pair.\n");
+     
+     //attempt to open new file, fail if exists
+     live = open("live.txt", O_RDWR | O_CREAT | O_EXCL, 0664);
+    
+     //if failed, file exists. open.
+     if(live==-1){
+       live = open("live.txt", O_RDWR, 0664);
+       lseek(live, 0, SEEK_END);
+     }
+   
+     
+     dead = open("dead.txt", O_RDWR | O_CREAT | O_EXCL, 0664);
+     if(dead==-1){
+       dead = open("dead.txt", O_RDWR, 0664);
+       lseek(dead, 0, SEEK_END);
+     }
+   
+     shuffle(live);
+     return 0;
+     if(!already_playing()){
+       //add players
+       printf("Waiting for players or start command...\n");
+       fflush(stdout);
+
+       while(1){
+	 memset(buffer, 0, 50);
+	 if(read(fromClient, buffer, 50)){
+	   if(strcmp(buffer, "start admin\n")==0){
+	     printf("Game starting!\n\n");
+	     break;
+	   }
+	   if(strchr(buffer, ' ')){
+	     //	 printf("adding '%s'\n", buffer);
+	     write(live, buffer, strlen(buffer));
+	   }
+	   else{
+	     printf("Invalid name/password pair.\n");
+	   }
+	 }
        }
      }
-   }
+     //if game has already started, i.e. if program is being
+     //restarted in the middle, do NOT shuffle. when restarting, 
+     //must send "start admin" quickly!
+     if(!already_playing()){
+       printf("shuffling before play\n");
+       shuffle(live);
+     }
+     
+     //note that game has started
+     open("playing", O_CREAT | O_EXCL);
 
-   
-   //start play
-   printf("Instructions:\nEnter first and last name of your victim in all lower case, with no space, and THEN a space, then the password you received from him/her.\nExample: johndoe password\n");
-   numplayers = count_lines(live);
-  
+     //start play
+     printf("Instructions:\nEnter first and last name of your victim in all lower case, with no space, and THEN a space, then the password you received from him/her.\nExample: johndoe password\n");
+     numplayers = count_lines(live);
+     
   while(1){
     memset(buffer, 0, 50);
     if(read(fromClient, buffer, 50)){
@@ -64,7 +96,7 @@ int main(){
 	printf("Invalid string.\n");
       }
       if(check==1){
-	 printf("No match.\n");
+	printf("No match.\n");
       }
       if(check==-2){
 	printf("Already dead.\n");
@@ -74,6 +106,14 @@ int main(){
   }
 }  	      
 
+int already_playing(){
+  if(open("playing", O_CREAT | O_EXCL, 0664)==-1){
+    return 1;
+  }
+  remove("playing");
+  return 0;
+}
+
 static void sighandler(int signo){
   if(signo == SIGINT){
     remove("upstream");
@@ -82,13 +122,14 @@ static void sighandler(int signo){
     exit(0);
   }
 } 
-  
+
 int server_init(){
   int fd;
   assert(mkfifo("upstream", 0644)==0);
   // printf("about to open upstream\n");
   fd = open("upstream", O_RDONLY);
   assert(fd!=-1);
+  fflush(stdout);
   return fd;
 }
 
@@ -126,8 +167,9 @@ int check_key(int live, int dead, char* str){
       //   printf("recorded\n");
       next_target(live, dead, line);
     
-      printf("Kill successfully recorded. Your next target is %s.\n", line);
       check_win(str);
+      printf("Kill successfully recorded. Your next target is %s.\n", line);
+      //    check_win(str);
       return 0;
     }
   }
@@ -142,10 +184,12 @@ void check_win(char* name){
   if(numplayers-1==numdead){
     char name[50];
     //winner is the only target remaining
-     next_target(live, dead, name);
+      next_target(live, dead, name);
   
   
     printf("GAME OVER!!! WINNER: %s\n", name);
+    remove("dead");
+    remove("playing");
     remove("upstream");
        exit(0);
   }
