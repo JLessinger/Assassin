@@ -5,91 +5,92 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <unistd.h>
 #include "assassin.h"
+#include "shuffle.h"
 
 #define READ 0
 #define WRITE 1
-#define AUTH 2
-#define KILL 3
 
-int fromClient, live, dead, numplayers;
+
+int fromClient, live, dead, numplayers, check_auth;
 
 int main(){
   
+  printf("Content-type: text/plain\n\n");
+
   // printf("%d\n", already_playing());
   fflush(stdout);
 
    umask(0000);
    signal(SIGINT, sighandler);
    
-        fromClient = server_init();
+   //    fromClient = server_init();
      //   printf("after init\n");
     
-  fflush(stdout);
+ 
      
-     char buffer[50];
-     memset(buffer, 0, 50);
-     
-     //attempt to open new file, fail if exists
-     live = open("live.txt", O_RDWR | O_CREAT | O_EXCL, 0664);
-    
-     //if failed, file exists. open.
-     if(live==-1){
-       live = open("live.txt", O_RDWR, 0664);
-       lseek(live, 0, SEEK_END);
-     }
-   
-     
-     dead = open("dead.txt", O_RDWR | O_CREAT | O_EXCL, 0664);
-     if(dead==-1){
-       dead = open("dead.txt", O_RDWR, 0664);
-       lseek(dead, 0, SEEK_END);
-     }
-   
-    
-     if(!already_playing()){
-       //add players
-       printf("Waiting for players or start command...\n");
-       fflush(stdout);
+  char* buffer, *ass, *victim;
+  ass = (char*)malloc(128);
+  victim = (char*)malloc(128);
+  //  buffer = (char*)malloc(256);
+  // memset(buffer, 0, 256);
+  
+  //attempt to open new file, fail if exists
+  live = open("live.txt", O_RDWR | O_CREAT | O_EXCL, 0664);
+  
+  //if failed, file exists. open.
+  if(live==-1){
+    live = open("live.txt", O_RDWR, 0664);
+    lseek(live, 0, SEEK_END);
+  }
+  
+  
+  dead = open("dead.txt", O_RDWR | O_CREAT | O_EXCL, 0664);
+  if(dead==-1){
+    dead = open("dead.txt", O_RDWR, 0664);
+    lseek(dead, 0, SEEK_END);
+  }
 
-       while(1){
-	 memset(buffer, 0, 50);
-	 if(read(fromClient, buffer, 50)){
-	   if(strcmp(buffer, "start admin\n")==0){
-	     printf("Game starting!\n\n");
-	     break;
-	   }
-	   if(strchr(buffer, ' ')){
-	     //	 printf("adding '%s'\n", buffer);
-	     write(live, buffer, strlen(buffer));
-	   }
-	   else{
-	     printf("Invalid name/password pair.\n");
-	   }
-	 }
-       }
-     }
-     //if game has already started, i.e. if program is being
-     //restarted in the middle, do NOT shuffle. when restarting, 
-     //must send "start admin" quickly!
-     if(!already_playing()){
-       printf("shuffling before play\n");
-       shuffle(live);
-     }
-     
-     //note that game has started
-     open("playing", O_CREAT | O_EXCL);
+    buffer = getenv("QUERY_STRING");
+    printf("buffer: %s\n", buffer);
+    ass = strsep(&buffer, "&");
+    strcpy(victim, buffer);
+    strcat(ass, "\n");
+    strcat(victim, "\n");
+    
+      printf("ass: %s\nvictim: %s\n", ass, victim);
+  
+      //must have a +, and must have characters before and after
+      //i.e. no null name or pw
+      if(!strchr(ass, '+') || ass[strlen(ass)-2]=='+' || ass[9]=='+'){
+	printf("Bad string.\n");
+	return -1;
+      }
 
-     //start play
-     printf("Instructions:\nEnter first and last name of your victim in all lower case, with no space, and THEN a space, then the password you received from him/her.\nExample: johndoe password\n");
-     numplayers = count_lines(live);
-     
+  if(!already_playing()){
+    pre_game(buffer, ass, victim, live);
+  }
+  else{//playing
+    //0 = auth success; -1 = auth failure
+    check_auth =  auth(live, dead, ass, victim);
+    if(check_auth==0){
+
+    }
+  }
+  return 0;
+ 
+  
+ 
+  numplayers = count_lines(live);
+  
   while(1){
     memset(buffer, 0, 100);
+ 
     if(read(fromClient, buffer, 100)){
-      //  printf("Message: %d'%s'\n", strlen(buffer), buffer);
+        printf("Message: %d'%s'\n", strlen(buffer), buffer);
       
-      if(!strchr(str, '.')){
+      if(strchr(buffer, '.')){
 	printf("Invalid string.\n");
       }
       else{//buffer contains two things separated by '.'
@@ -98,7 +99,7 @@ int main(){
 	char user[50];
 	
 	//buffer now holds only name of the input target
-	strcpy(user, strsep(&buffer, '.'));
+        strcpy(user, strsep(&buffer, "."));
 	
 	//will hold appropriate target
 	char tar[50];
@@ -120,9 +121,10 @@ int main(){
 	    record(dead, tar);
 	    next_target(live, dead, tar);
 	    check_win();
-	    printf("Kill successfully recorded. Your next target is %s.\n", line);
+	    printf("Kill successfully recorded. Your next target is %s.\n", tar);
 	  }
 	}
+        /*
 	fflush(stdout);
 	//	int check;
 	check = check_key(live, dead, buffer, KILL);
@@ -136,34 +138,55 @@ int main(){
 	  printf("Already dead.\n");
 	}
 	fflush(stdout);
+        */
       }
     }
-  }  	      
+  }  	   
+}   
+
+
+void pre_game(char* buffer, char* ass, char* victim, int live){
+ 
+    //add players
+    printf("Waiting for players or start command...\n");
+    fflush(stdout);
+  
+
+
+      if(strcmp(ass, "assassin=start+admin")==0){
+	printf("Game starting!\n\n");
+	printf("shuffling before play\n");
+	shuffle(live);
+	open("playing", O_CREAT | O_EXCL);
+      }
+     
+      else{
+	write(live, ass, strlen(ass));
+	printf("You have been added to the game!\n");
+      }
+   
 }
 
-
-int auth(int live, int dead, char* str, char* tar){
+//if str is in live, put appropriate target in tar
+//handles improperly formatted string
+ int auth(int live, int dead, char* ass, char* victim ){
   lseek(live, 0, SEEK_SET);
-  if(!strchr(str, ' ')){
-    //    printf("no space\n");
-    return -1;
-  }
-  if(str[0]==' '){
-    // printf("No name.\n");
-    return -1;
-  }
+
+
   
-  if(is_dead(dead, str)){
-    return -2;
+  if(is_dead(dead, ass)){
+    printf("You are dead.\n");
   }
-  while(readline(live, tar)){
-    if(strcmp(str, tar)==0){
-      next_target(live, dead, tar);
+  while(readline(live, victim)){
+    if(strcmp(ass, victim)==0){
+      next_target(live, dead, victim);
       return 0;
     }
   }
+  return -1;
 }
 
+/*******
   //returns 0 upon success, -1 (or any non-zero number) upon failure
   //success = properly formatted string
 int check_key(int live, int dead, char* str, int mode){
@@ -217,7 +240,7 @@ int check_key(int live, int dead, char* str, int mode){
     return 1;
   }
 }
-
+*****/
 int already_playing(){
   if(open("playing", O_CREAT | O_EXCL, 0664)==-1){
     return 1;
