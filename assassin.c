@@ -18,27 +18,31 @@ int fromClient, live, dead, numplayers, check_auth;
 int main(){
   
   printf("Content-type: text/plain\n\n");
-
+ 
   // printf("%d\n", already_playing());
   fflush(stdout);
 
    umask(0000);
-   signal(SIGINT, sighandler);
+ 
    
    //    fromClient = server_init();
      //   printf("after init\n");
     
  
      
-  char* buffer, *ass, *victim;
-  ass = (char*)malloc(128);
-  victim = (char*)malloc(128);
-  //  buffer = (char*)malloc(256);
-  // memset(buffer, 0, 256);
+   char* buffer, *ass, *victim, *next;
+   ass = (char*)malloc(128);
+   victim = (char*)malloc(128);
+   next = (char*)malloc(128);
+   memset(ass, 0, 128);
+   memset(victim, 0, 128);
+   memset(next, 0, 128);
+   //  buffer = (char*)malloc(256);
+   // memset(buffer, 0, 256);
   
-  //attempt to open new file, fail if exists
-  live = open("live.txt", O_RDWR | O_CREAT | O_EXCL, 0664);
-  
+   //attempt to open new file, fail if exists
+   live = open("live.txt", O_RDWR | O_CREAT | O_EXCL, 0664);
+   
   //if failed, file exists. open.
   if(live==-1){
     live = open("live.txt", O_RDWR, 0664);
@@ -54,26 +58,29 @@ int main(){
 
     buffer = getenv("QUERY_STRING");
     printf("buffer: %s\n", buffer);
-    ass = strsep(&buffer, "&");
-    strcpy(victim, buffer);
-    strcat(ass, "\n");
-    strcat(victim, "\n");
-    
-      printf("ass: %s\nvictim: %s\n", ass, victim);
-  
-      //must have a +, and must have characters before and after
-      //i.e. no null name or pw
-      if(!strchr(ass, '+') || ass[strlen(ass)-2]=='+' || ass[9]=='+'){
-	printf("Bad string.\n");
-	return -1;
-      }
+    fflush(stdout);
 
+    
+    ass = strsep(&buffer, "&");
+    strsep(&ass, "=");
+    strsep(&victim, "=");
+    
+  
+       strcpy(victim, buffer);
+     strcat(ass, "\n");
+     strcat(victim, "\n");
+     
+      printf("**ass: %s\nvictim: %s\n", ass, victim);
+    fflush(stdout);
+  
+ printf("...");
+    fflush(stdout);
   if(!already_playing()){
     pre_game(buffer, ass, victim, live);
   }
   else{//playing
     //0 = auth success; -1 = auth failure
-    check_auth =  auth(live, dead, ass, victim);
+    check_auth =  auth(live, dead, ass, victim, next);
     if(check_auth==0){
 
     }
@@ -82,8 +89,8 @@ int main(){
  
   
  
-  numplayers = count_lines(live);
-  
+ 
+  /*   
   while(1){
     memset(buffer, 0, 100);
  
@@ -124,7 +131,7 @@ int main(){
 	    printf("Kill successfully recorded. Your next target is %s.\n", tar);
 	  }
 	}
-        /*
+        
 	fflush(stdout);
 	//	int check;
 	check = check_key(live, dead, buffer, KILL);
@@ -138,25 +145,26 @@ int main(){
 	  printf("Already dead.\n");
 	}
 	fflush(stdout);
-        */
-      }
-    }
-  }  	   
+        
+}
+}
+}	*/   
 }   
 
 
 void pre_game(char* buffer, char* ass, char* victim, int live){
  
     //add players
-    printf("Waiting for players or start command...\n");
-    fflush(stdout);
+  //   printf("Waiting for players or start command...\n");
+  //    fflush(stdout);
   
 
 
-      if(strcmp(ass, "assassin=start+admin")==0){
+      if(strcmp(ass, "start+admin")==0){
 	printf("Game starting!\n\n");
 	printf("shuffling before play\n");
 	shuffle(live);
+	numplayers = count_lines(live);
 	open("playing", O_CREAT | O_EXCL);
       }
      
@@ -169,17 +177,19 @@ void pre_game(char* buffer, char* ass, char* victim, int live){
 
 //if str is in live, put appropriate target in tar
 //handles improperly formatted string
- int auth(int live, int dead, char* ass, char* victim ){
+int auth(int live, int dead, char* ass, char* victim, char* next ){
   lseek(live, 0, SEEK_SET);
 
+  char* line;
+  line = (char*)malloc(100);
 
-  
   if(is_dead(dead, ass)){
     printf("You are dead.\n");
+    return -2;
   }
-  while(readline(live, victim)){
-    if(strcmp(ass, victim)==0){
-      next_target(live, dead, victim);
+  while(readline(live, line)){
+    if(strcmp(ass, line)==0){
+      next_target(live, dead, next);
       return 0;
     }
   }
@@ -249,25 +259,6 @@ int already_playing(){
   return 0;
 }
 
-static void sighandler(int signo){
-  if(signo == SIGINT){
-    remove("upstream");
-    close(live);
-    close(dead);
-    exit(0);
-  }
-} 
-
-int server_init(){
-  int fd;
-  assert(mkfifo("upstream", 0644)==0);
-  // printf("about to open upstream\n");
-  fd = open("upstream", O_RDONLY);
-  assert(fd!=-1);
-  fflush(stdout);
-  return fd;
-}
-
 void check_win(){
   int numdead;
   numdead = count_lines(dead);
@@ -306,7 +297,7 @@ void next_target(int live, int dead, char* line){
   while(readline(live, line)){
     //  printf("'%s'", line);
     if(!is_dead(dead, line)){
-      (*strchr(line, ' ')) = '\0';
+      (*strchr(line, '+')) = '\0';
       return;
     }
   }

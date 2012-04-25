@@ -2,7 +2,13 @@
 Leave a question and your name and hopefully someone will get back to you.
 This file can be used to essentially create a FAQ for our project so we can work on it without being online at the same time.
 
-1.   Gameplay is quick. One person can finish multiple targets before they have access to a computer. How will they get their next target on the go?
+1.   Gameplay is quick. One person can finish multiple targets before they have access to a computer. How will they get their next target on the go?     
+
      Can't people just say who their target is instead of giving their password? Changes can still be logged here, but maybe not in real time.
      This project seems much better for the start and end of the game than the middle.
      -Robert Bennett
+
+Jonathan Lessinger EDIT 2:30AM 4/25/12
+1. Since it's a live-action game, sometimes there is no choice but to use old fashioned methods. The target will have to simply tell the assassin the target in that case. Alternatively, the assassin can use his phone between kills.
+
+2. Theoretically, everyone's target is a secret, but an extra layer of security couldn't hurt. It's actually easier to verify a name-password pair than to chop the password off the internal records and then compare. 

@@ -1,4 +1,1 @@
-assassin=a+
-assassin=a+
-assassin=+a
-assassin=+a
+a+b

@@ -1,4 +1,3 @@
-static void sighandler(int signo);
 int server_init();
 int check_key(int live, int dead, char* str, int mode);
 void next_target(int live, int dead, char* line);
@@ -8,5 +7,5 @@ void record(int dead, char* str);
 void check_win();
 int count_lines(int file);
 int already_playing();
-int auth(int live, int dead, char* str, char* tar);
+int auth(int live, int dead, char* ass, char* victim, char* next);
 void pre_game(char* buffer, char* ass, char* victim, int live);
