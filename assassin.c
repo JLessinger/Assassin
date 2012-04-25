@@ -16,7 +16,7 @@
 int fromClient, live, dead, numplayers, check_auth;
 
 int main(){
-  
+ 
   printf("Content-type: text/plain\n\n");
  
   // printf("%d\n", already_playing());
