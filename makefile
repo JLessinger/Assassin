@@ -1,7 +1,7 @@
 OBJECTS= assassin.o shuffle.o
 
 all: $(OBJECTS)
-	gcc -Wall -o assassin.cgi $(OBJECTS)
+	gcc -Wall -o assassin.py $(OBJECTS)
 
 assassin.o: assassin.c assassin.h shuffle.h
 	gcc -c -Wall assassin.c
