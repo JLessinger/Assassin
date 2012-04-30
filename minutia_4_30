@@ -1,0 +1,62 @@
+minutia
+
+Parser - structure / syntax
+
+file -> lexer -> list of tokens with no meaning
+
+parser figures out what needs to go AFTER each token
+
+
+if a token is an identifier (variable/function)
+    the only thing that comes after that is
+        value
+        nothing
+
+parser language examples:
+
+#identifier can have 0 or 1 argument
+IDENTIFIER { }
+
+IDENTIFIER DOUBLE {
+    symbol table update
+}
+#sphere takes 4 doubles
+SPHERE DOUBLE DOUBLE DOUBLE DOUBLE {
+    store a call to sphere
+}
+
+IF LPAREN BOOL STATEMENT RPAREN STATEMENT {}
+
+IF LPAREN BOO LSTATEMENT RPAREN LBRACE STATEMENT RBRACE {}
+
+regular expression stuff
+    \- escape the - sign. means the character '-' rather than - used in
+     an expression like [0-9]
+
+     ? means 0 or one of the expression preceding. e.g. \-? means possibly         a - sign.
+
+     . means anything (wildcard)
+     * means 0 or more of the thing preceding
+     
+
+parser (mdl.y, mdl.l)
+        SYMTAB = symbol table
+        op = array that stores all operations from lexer output
+
+        struct command{
+               int opcode;
+             union{
+                #structs
+             }
+        }
+
+a union is like a struct, but only contains one of its types when declared
+
+e.g. union foo{
+     double x;
+     char a;
+}
+
+union foo u;
+u.x = 4;
+u.a = 'a'; #ERROR
