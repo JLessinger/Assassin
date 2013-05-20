@@ -1,13 +1,13 @@
 OBJECTS= assassin.o shuffle.o
 
 all: $(OBJECTS)
-	gcc -o server $(OBJECTS)
+	gcc -Wall -o assassin.py $(OBJECTS)
 
 assassin.o: assassin.c assassin.h shuffle.h
-	gcc -c assassin.c
+	gcc -c -Wall assassin.c
 
 shuffle.o: shuffle.c shuffle.h
-	gcc -c shuffle.c
+	gcc -c -Wall shuffle.c
 
 clean:
 	rm *.o *~
